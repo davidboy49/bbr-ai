@@ -5,8 +5,8 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters
 from collections import deque
 from openai import OpenAI
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-HF_TOKEN = os.getenv("HF_TOKEN")
+BOT_TOKEN = os.getenv("8344322334:AAH79QeDcPsVqR6Khsik9DXOmf5qPNoedcA")
+HF_TOKEN = os.getenv("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")
 
 client = OpenAI(
     base_url="https://router.huggingface.co/v1",
@@ -81,3 +81,4 @@ async def webhook(request: Request):
     update = Update.de_json(data, application.bot)
     await application.process_update(update)
     return {"ok": True}
+
