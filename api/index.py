@@ -10,6 +10,7 @@ from openai import OpenAI
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 HF_TOKEN = os.getenv("HF_TOKEN")
 TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("telegram-bot")
@@ -116,11 +117,19 @@ async def on_startup():
     if application:
         await application.initialize()
         await application.start()
+        if WEBHOOK_URL:
+            await application.bot.set_webhook(
+                url=WEBHOOK_URL,
+                secret_token=TELEGRAM_WEBHOOK_SECRET,
+            )
+            logger.info("Webhook configured for %s", WEBHOOK_URL)
 
 
 @app.on_event("shutdown")
 async def on_shutdown():
     if application:
+        if WEBHOOK_URL:
+            await application.bot.delete_webhook(drop_pending_updates=False)
         await application.stop()
         await application.shutdown()
 
