@@ -132,6 +132,14 @@ Chat:
 
 async def on_error(update, context):
     logger.exception("Update handling failed: %s", context.error)
+    if update and update.effective_chat:
+        try:
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="Sorry, something went wrong while handling that request.",
+            )
+        except Exception as exc:
+            logger.exception("Failed to send error message: %s", exc)
 
 
 if application:
@@ -169,6 +177,10 @@ async def webhook(request: Request):
     data = await request.json()
     logger.info("Received update: %s", data.get("update_id"))
     update = Update.de_json(data, application.bot)
-    await application.process_update(update)
+    try:
+        await application.process_update(update)
+    except Exception as exc:
+        logger.exception("Webhook processing failed: %s", exc)
+        return {"ok": False, "error": "Update processing failed"}
     return {"ok": True}
 
