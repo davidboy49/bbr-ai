@@ -1,5 +1,6 @@
 import logging
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from openai import APIError, OpenAIError
 from telegram import Update
@@ -24,7 +25,30 @@ else:
     client = None
 
 chat_logs = {}
-app = FastAPI()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    if application:
+        await application.initialize()
+        await application.start()
+        if WEBHOOK_URL:
+            await application.bot.set_webhook(
+                url=WEBHOOK_URL,
+                secret_token=TELEGRAM_WEBHOOK_SECRET,
+            )
+            logger.info("Webhook configured for %s", WEBHOOK_URL)
+
+    yield
+
+    if application:
+        if WEBHOOK_URL:
+            await application.bot.delete_webhook(drop_pending_updates=False)
+        await application.stop()
+        await application.shutdown()
+
+
+app = FastAPI(lifespan=lifespan)
 application = Application.builder().token(BOT_TOKEN).build() if BOT_TOKEN else None
 
 
@@ -110,28 +134,6 @@ if application:
     application.add_handler(CommandHandler("summary", summary))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, record))
     application.add_error_handler(on_error)
-
-
-@app.on_event("startup")
-async def on_startup():
-    if application:
-        await application.initialize()
-        await application.start()
-        if WEBHOOK_URL:
-            await application.bot.set_webhook(
-                url=WEBHOOK_URL,
-                secret_token=TELEGRAM_WEBHOOK_SECRET,
-            )
-            logger.info("Webhook configured for %s", WEBHOOK_URL)
-
-
-@app.on_event("shutdown")
-async def on_shutdown():
-    if application:
-        if WEBHOOK_URL:
-            await application.bot.delete_webhook(drop_pending_updates=False)
-        await application.stop()
-        await application.shutdown()
 
 
 @app.post("/")
