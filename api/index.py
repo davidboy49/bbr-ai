@@ -116,7 +116,7 @@ Chat:
 
     try:
         response = client.chat.completions.create(
-            model="mistralai/Ministral-8B-Instruct:free",
+            model="mistralai/Mistral-7B-Instruct-v0.2:featherless-ai",
             messages=[{"role": "user", "content": prompt}],
         )
     except (APIError, OpenAIError) as exc:
@@ -183,4 +183,5 @@ async def webhook(request: Request):
         logger.exception("Webhook processing failed: %s", exc)
         return {"ok": False, "error": "Update processing failed"}
     return {"ok": True}
+
 
