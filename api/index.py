@@ -16,6 +16,8 @@ WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("telegram-bot")
 
+webhook_configured = False
+
 if HF_TOKEN:
     client = OpenAI(
         base_url="https://router.huggingface.co/v1",
@@ -29,6 +31,7 @@ chat_logs = {}
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    global webhook_configured
     if application:
         await application.initialize()
         await application.start()
@@ -38,6 +41,7 @@ async def lifespan(_: FastAPI):
                 secret_token=TELEGRAM_WEBHOOK_SECRET,
             )
             logger.info("Webhook configured for %s", WEBHOOK_URL)
+            webhook_configured = True
 
     yield
 
@@ -46,6 +50,7 @@ async def lifespan(_: FastAPI):
             await application.bot.delete_webhook(drop_pending_updates=False)
         await application.stop()
         await application.shutdown()
+        webhook_configured = False
 
 
 app = FastAPI(lifespan=lifespan)
@@ -142,9 +147,18 @@ async def webhook(request: Request):
         logger.error("BOT_TOKEN is not configured; webhook ignored.")
         return {"ok": False, "error": "BOT_TOKEN is not configured on the server."}
 
+    global webhook_configured
     if not application.running:
         await application.initialize()
         await application.start()
+
+    if WEBHOOK_URL and not webhook_configured:
+        await application.bot.set_webhook(
+            url=WEBHOOK_URL,
+            secret_token=TELEGRAM_WEBHOOK_SECRET,
+        )
+        logger.info("Webhook configured for %s", WEBHOOK_URL)
+        webhook_configured = True
 
     if TELEGRAM_WEBHOOK_SECRET:
         secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token")
